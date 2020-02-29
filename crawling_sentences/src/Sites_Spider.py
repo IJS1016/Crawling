@@ -1,0 +1,320 @@
+#! /bin/python3.6
+
+
+################################################################################
+# Site_Spider.py
+#-------------------------------------------------------------------------------
+# Crawling several site that offer example sentences
+#
+# Input  : Site_Spider.py "search_word"
+# Output : Sentences are saved about search word in the save directory.
+#          Sentences have a search word.
+#         (save_path = "/space/spider/datas/crawl_sentences_by_word/")
+################################################################################
+
+# ===========================================================
+# Import modules
+# ===========================================================
+import sys
+import os
+import time
+import re
+import gzip
+from bs4 import BeautifulSoup as bs
+import requests
+
+from urllib.request import Request, urlopen
+from nltk.corpus import wordnet as wdn
+
+
+# ===========================================================
+# Import Variable
+# ===========================================================
+_, search_word = sys.argv
+#search_word = 'agency'
+
+save_path   = '/space/spider/data/crawl_sentences_by_word/'
+
+# ===========================================================
+# Functions for parsing
+# ===========================================================
+
+def get_sentences_by_tag(soup, tags) : #{
+    global check_word, sentences
+
+    para_list = soup.find_all(tags)
+
+    for p in para_list : #{
+        sents = p.text
+        sents = re.sub('\[\d+\]|\[.+\]', '', sents).replace('\n', '')
+        sent_list = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', sents)
+
+        ## Save sentences that contains check words
+        for sent in sent_list : #{
+
+            #if have problem
+            if re.search(search_word, sent) and re.search('\.$|\!$|\?$', sent) and re.match('^[a-zA-Z0-9]',sent) : #{
+                print(sent)
+                sentences.append(sent)
+
+                #}
+            #}
+        #}
+    #}
+#}
+
+# ===========================================================
+# Functions for organizing parsing sentences
+# ===========================================================
+def orgnaize_parsing_sentences(p) : #{
+
+    sents = p.text
+    sents = re.sub('\[\d+\]|\[.+\]', '', sents).replace('\n', '')
+    sent_list = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', sents)
+
+    print(sent_list)
+
+#}
+
+
+# ===========================================================
+# Functions for each sentence dictionary site [robots.txt = true]
+# ===========================================================
+# for your_dictionary.com (WORKING)
+def your_dictionary_parser(search_word) : #{
+    global sentence
+
+    print(">> PARSING http://www.your_dictionary.com/sentences/"+search_word)
+
+    req  = requests.get("https://sentence.yourdictionary.com/"+search_word.replace(' ','-')).text    
+    soup = bs(req, "html.parser")
+
+    time.sleep(3)
+
+    get_sentences_by_tag(soup, ['p'])
+
+    print(">> DONE    http://www.englishcollocation.com/how-to-use/"+search_word)
+    print(f">> Result {len(sentences)}") 
+#}
+
+
+# https://searchsentences.com/words/dogs-in-a-sentence (WORKING)
+def searchsetences_parser(search_word) : #{
+    global sentences
+
+    print(">> PARSING https://searchsentences.com/words/" + search_word + "-in-a-sentence")
+
+    req          = requests.get("https://searchsentences.com/words/" + search_word + "-in-a-sentence").text    
+    soup         = bs(req, "html.parser")
+ 
+    para_list = soup.find_all("span")
+
+    for p in para_list : #{
+        sents = p.text.replace("🔊","")
+        sents = re.sub('\d+.', '', sents)
+        sents = re.sub('\[\d+\]|\[.+\]', '', sents).replace('\n', '').lstrip()
+        sent_list = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', sents)
+
+        ## Save sentences that contains check words
+        for sent in sent_list : #{
+            if re.search(search_word, sent) : #{
+                print(sent)
+                sentences.append(sent)
+
+                #}
+            #}
+        #}
+    #}
+    print(">> DONE    https://searchsentences.com/words/" + search_word + "-in-a-sentence")
+    print(f">> Result {len(sentences)}") 
+#}
+
+# http://www.englishcollocation.com/how-to-use/dog (WORKING)
+def english_collocation(search_word) : #{
+    global sentences
+    
+    print(">> PARSING http://www.englishcollocation.com/how-to-use/"+search_word)
+
+    req          = requests.get("http://www.englishcollocation.com/how-to-use/"+search_word)
+    html         = req.content
+    soup         = bs(html, "html.parser")
+ 
+    para_list = soup.find_all("a")
+
+    for p in para_list : #{
+        sents = p.text
+        sents = re.sub('\[\d+\]|\[.+\]', '', sents).replace('\n', '')
+        sent_list = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', sents)
+
+        ## Save sentences that contains check words
+        for idx, sent in enumerate(sent_list) : #{
+            if re.search(search_word, sent) and re.search('\.$|\!$|\?$', sent) : #{
+                if not(sent in sentences) : #{
+                    print(sent)
+                    sentences.append(sent)
+                #}
+            #}
+        #}
+    #}
+    print(">> DONE    http://www.englishcollocation.com/how-to-use/"+search_word)
+    print(f">> Result {len(sentences)}") 
+
+#}
+
+
+
+# http://use-in-a-sentence.com/english-words/academic-words-english/abundant.htm (WORKING)
+def use_in_a_sentence_parser(search_word) : #{
+    global sentences
+
+    print(">> PARSING http://use-in-a-sentence.com/english-words/academic-words-english/"+search_word+".htm")
+
+    req          = requests.get("http://use-in-a-sentence.com/english-words/academic-words-english/"+search_word+".htm")
+    html         = req.content
+    soup         = bs(html, "html.parser")
+ 
+    para_list = soup.find_all("div")
+
+    for idx, p in enumerate(para_list) : #{
+        sents = p.text
+        sents = re.sub('\[\d+\]|\[.+\]', '', sents).replace('\n', '').lstrip()
+        sent_list = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', sents)
+
+
+        ## Save sentences that contains check words
+        for sents in sent_list : #{
+            div_sent = sents.replace(".",".\n").split("\n")
+
+            for idx, sent in enumerate(div_sent) : #{
+                if re.search(search_word, sent) and re.search('\.$|\!$|\?$', sent) and not(("how do I use the word" in sent)) and not(("Example Sentences for any English Word here " in sent)): #{
+                    if not(sent in sentences) : #{
+                        print(f">>> {sent}")
+                        sentences.append(sent)
+                    #}
+                #}
+            #}
+        #}
+    #}
+    print(">> DONE    http://use-in-a-sentence.com/english-words/academic-words-english/"+search_word+".htm")
+    print(f">> Result {len(sentences)}") 
+#}
+
+# https://dictionary.cambridge.org/dictionary/english/hunting-dog
+def dictionary_comabridge_parser(search_word) : #{
+    global sentences
+    print(">> PARSING  https://dictionary.cambridge.org/dictionary/english/"+search_word.replace(" ","-"))
+
+    req          = requests.get("https://dictionary.cambridge.org/dictionary/english/"+search_word.replace(" ","-"))
+    html         = req.content
+    soup         = bs(html, "html.parser")
+ 
+    para_list = soup.find_all("span")
+
+    for p in para_list : #{
+        sents = p.text
+        sents = re.sub('\[\d+\]|\[.+\]', '', sents).replace('\n', '')
+        sent_list = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', sents)
+
+        ## Save sentences that contains check words
+        for idx, sent in enumerate(sent_list) : #{
+            if re.search(search_word, sent) and re.search('\.$|\!$|\?$', sent) : #{
+                if not(sent in sentences) : #{
+                    print(f">>> {sent}")
+                    sentences.append(sent)
+                #}
+            #}
+        #}
+    #}
+    print(">> DONE    https://dictionary.cambridge.org/dictionary/english/"+search_word.replace(" ","-"))
+    print(f">> Result {len(sentences)}") 
+#}
+
+
+# ===========================================================
+# Functions for each sentence dictionary site [robots.txt = false] 
+# ===========================================================
+# https://sentencedict.com/ parsing [WORK] [two word OK]
+def sentencedict_parser(search_word) : #{
+    global sentences
+    print(">> PARSING  https://sentencedict.com/"+search_word+".html")
+
+    req          = requests.get("https://sentencedict.com/"+search_word+".html").text    
+    soup         = bs(req, "html.parser")
+
+    page_info    = soup.select("#div_main_left > div:nth-child(3)")
+
+    for p in page_info : #{
+        end_page = p.get_text().strip().split("\n")[1].split("/")[1] # get page info
+        end_page = int(re.findall("\d+", end_page)[0]) + 1
+    #}
+
+    for page_num in range(1, end_page) : #{
+        #print(">> OPEN https://sentencedict.com/"+search_word+"_"+str(page_num)+".html")    
+
+        req  = requests.get("https://sentencedict.com/"+search_word+"_"+str(page_num)+".html").text    
+        soup = bs(req, "html.parser")
+
+        time.sleep(3)
+        remove_num = re.compile("\d+ ")
+
+        para_list = soup.find_all('div')
+
+        for p in para_list : #{
+            sents = p.text
+            sents = re.sub('\[\d+\]|\[.+\]', '', sents).replace('\n', '')
+            sent_list = re.split(r'(?<=[^A-Z].[.?]) +(?=[A-Z])', sents)
+
+            ## Save sentences that contains check words
+            for sent in sent_list : #{
+                sent = remove_num.sub("", sent)
+                #if have problem
+                if re.search(search_word, sent) and re.search('\.$|\!$|\?$', sent) and re.match('^[a-zA-Z0-9]',sent) : #{
+                    print(sent)
+                    sentences.append(sent)
+
+        #HAVE TO REMOVE FORAWRD NUM!!!
+        #get_sentences_by_tag(soup, ['div'])
+
+        page_num += 1
+
+        #}
+    #}
+    print(">> DONE    https://sentencedict.com/"+search_word+".html")
+    print(f">> Result  {len(sentences)}") 
+
+#}
+
+
+# ===========================================================
+# Functions for each sentence dictionary site [robots.txt = false] 
+# ===========================================================
+def write_file(fd, sentences) : #{
+    global save_path
+
+    with gzip.open(save_path + fd + ".gz", "wt") as f: #{
+        for line in sentences : #{
+            if not ("_" in line) : #{
+                f.write(line.replace('\n', '')+'\n')
+            #}
+        #}
+    #}
+#}
+
+
+# ===========================================================
+# MAIN
+# ===========================================================
+print("################################################################################")
+print(f"# SEARCH WORD : {search_word}")
+print("################################################################################")
+
+sentences = []
+
+your_dictionary_parser(search_word)
+sentencedict_parser(search_word)
+searchsetences_parser(search_word)
+english_collocation(search_word)
+use_in_a_sentence_parser(search_word)
+dictionary_comabridge_parser(search_word)
+
+write_file(search_word, sentences)

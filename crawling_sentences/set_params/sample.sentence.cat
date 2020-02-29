@@ -1,0 +1,6 @@
+search_word  = 'cat'                                #<< word to search
+base_dir     = '/space/spider/data/crawl_by_tag'   #<< directory to save contents
+page_num     = 4				    #<< number of pages to crawl in google
+global_level = 2				    #<< number of depth to crawl
+limit        = 3				    #<< limit number of hyperlinks per page
+tag_list     = ['title', 'h', 'p', 'a'] 	    #<< "title"(must) | "h1-h6" | "p" | "a"(must)
